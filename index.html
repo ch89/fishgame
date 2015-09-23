@@ -1,0 +1,495 @@
+<html lang="en">
+    <head>
+        <title>Game</title>
+        <meta charset="utf-8">
+        <!-- Fonts -->
+        <!--<link href='http://fonts.googleapis.com/css?family=Dosis|Gloria+Hallelujah' rel='stylesheet' type='text/css'>-->
+        <!-- Basic CSS -->
+        <link rel="Stylesheet" href="basic.css" />
+    </head>
+    <body>
+        <script src="http://cdnjs.cloudflare.com/ajax/libs/gsap/1.11.7/TweenMax.min.js"></script>
+        <script src="Ajax.js"></script>
+        <script src="Timer.js"></script>
+        <script src="Cooldown.js"></script>
+        <script src="KeyObject.js"></script>
+        <script src="javascript-helper.js"></script>
+        <script src="pixi.js"></script>
+        <script src="Main.js"></script>
+        <script src="Button.js"></script>
+        <script src="Water.js"></script>
+        <script src="MainMenu.js"></script>
+        <script src="OptionsMenu.js"></script>
+        <script src="LevelMenu.js"></script>
+        <script src="GameOverMenu.js"></script>
+        <script src="HighScoreMenu.js"></script>
+        <script src="Background.js"></script>
+        <script src="Player.js"></script>
+        <script src="Player2.js"></script>
+        <script src="Fish.js"></script>
+        <script src="Turtle.js"></script>
+        <script src="Swordfish.js"></script>
+        <script src="Shrimp.js"></script>
+        <script src="Lightning.js"></script>
+        <script src="Jellyfish.js"></script>
+        <script src="Mud.js"></script>
+        <script src="EnemyBullet.js"></script>
+        <script src="ShrimpBullet.js"></script>
+        <script src="Shark.js"></script>
+        <script src="Shell.js"></script>
+        <script src="SeekingMissile.js"></script>
+        <script src="Octopus.js"></script>
+        <script src="Star.js"></script>
+        <script src="Seastar.js"></script>
+        <script src="Crab.js"></script>
+        <script src="Boomerang.js"></script>
+        <script src="Missile.js"></script>
+        <script src="Rocket.js"></script>
+        <script src="PowerUp.js"></script>
+        <script src="HealthBar.js"></script>
+        <script src="Mussle.js"></script>
+        <script src="InstructionsMenu.js"></script>
+        <script>
+            var stage;
+            var renderer;
+            var currentLevel;
+            var main;
+            var water;
+            var mainMenu;
+            var optionsMenu;
+            var pauseMenu;
+            var levelMenu;
+            var gameOverMenu;
+            var highScoreMenu;
+            var instructionsMenu;
+            var key;
+            var background;
+            var player;
+            var players = [];
+            var enemies = [];
+            var levels;
+            var enemyList;
+            var shrimpTimer;
+            var swordfishTimer;
+            var jellyfishTimer;
+            var turtleTimer;
+            var mussleTimer;
+            var powerUpTimer;
+            var bossTimer;
+            var scoreText;
+            var score;
+            var bossHealthBar;
+            var paused;
+            var gameOverTimer;
+            var lives;
+            var numPlayers = 1;
+            var isGameOver;
+            var gamepad;
+            var stageMusic;
+            var muteMusic = false;
+            var muteSound = false;
+
+            var resources = [
+                'images/water.jpg',
+                'images/displacementMap.jpg',
+                'images/bgmenu.png',
+                'images/level1.png',
+                'images/level2.png',
+                'images/level3.png',
+                'images/button.png',
+                'images/player.png',
+                'images/enemy.png',
+                'images/cannon.png',
+                'images/turret.png',
+                'images/bullet.png',
+                'images/cannonbullet.png',
+                'images/enemybeam.png',
+                'images/boss.png',
+                'images/rocket.png',
+                'images/powerup.png',
+                'images/tank.png',
+                'images/tankturret.png',
+                'images/bluelaser.png',
+                'images/boomerang3.png',
+                'images/shark.png',
+                'images/star.png',
+                'images/octopus.png',
+                'images/claw.png',
+                'images/greenfish.png',
+                'images/line.png',
+                'images/skott.png',
+                'images/o.png',
+                'images/seastar.png',
+                'images/crab.png',
+                'images/shell.png',
+                'images/shrimp.png',
+                'images/throwstar.png',
+                'images/worm.png',
+                'images/swordfish.png',
+                'images/spear.png',
+                'images/jellyfish.png',
+                'images/purplemud.png',
+                'images/greenmud.png',
+                'images/pinkfish.png',
+                'images/turtle.png',
+                'images/mussle.png',
+                'images/minirocket.png',
+                'images/seekingrocket.png'
+            ];
+
+            WebFontConfig = {
+                google: {
+                    families: ['Gloria Hallelujah']
+                },
+
+                active: function() {
+                    loadAssets();
+                }
+            };
+
+            function loadFonts() {
+                var wf = document.createElement('script');
+                wf.src = ('https:' == document.location.protocol ? 'https' : 'http') + '://ajax.googleapis.com/ajax/libs/webfont/1/webfont.js';
+                wf.type = 'text/javascript';
+                wf.async = 'true';
+                var s = document.getElementsByTagName('script')[0];
+                s.parentNode.insertBefore(wf, s);
+            }
+
+            loadFonts();
+
+            function loadAssets() {
+                var loader = new PIXI.AssetLoader(resources);
+                loader.onComplete = init;
+                loader.load();
+            }
+
+            function onGamepadConnected(e) {
+                gamepad = e.gamepad;
+
+                gamepad.buttonPressed = function(buttonId) {
+                    return this.buttons[buttonId].pressed;
+                }
+
+                gamepad.stickMoved = function(axisId, negativeDirection) {
+                    var axis_threshold = .1;
+
+                    if(negativeDirection) {
+                        return this.axes[axisId] < -axis_threshold;
+                    }
+                    else {
+                        return this.axes[axisId] > axis_threshold;
+                    }
+                }
+            }
+
+            function onGamepadDisconnected(e) {
+                gamepad = null;
+            }
+
+            function init() {
+                // Gamepad
+                if('GamepadEvent' in window) {
+                    window.addEventListener(GamepadEvent.GAMEPAD_CONNECTED, onGamepadConnected);
+                    window.addEventListener(GamepadEvent.GAMEPAD_DISCONNECTED, onGamepadDisconnected);
+                }
+
+                stage = new PIXI.Stage();
+                renderer = new PIXI.WebGLRenderer(600, 300);
+                document.body.appendChild(renderer.view);
+
+                levels = [
+                    PIXI.Texture.fromFrame('images/level1.png'),
+                    PIXI.Texture.fromFrame('images/level2.png'),
+                    PIXI.Texture.fromFrame('images/level3.png'),
+                ];
+
+                enemyList = [
+                    'shark',
+                    'octopus',
+                    'seastar'
+                ];
+
+                window.addEventListener('keyup', function(e) {
+                    if(e.keyCode == 77) {
+                        muteMusic = !muteMusic;
+
+                        if(muteMusic) {
+                            stageMusic.pause();
+                        }
+                        else {
+                            stageMusic.play();
+                        }
+                    }
+                    else if(e.keyCode == 78) {
+                        muteSound = !muteSound;
+                    }
+                    else if(e.keyCode == 27) {
+                        resetGame();
+                        stage.addChild(water);
+                        stage.addChild(mainMenu);
+                    }
+                });
+
+                stageMusic = new Audio('sounds/music.mp3');  
+
+                water = new Water();
+                mainMenu = new MainMenu();
+                optionsMenu = new OptionsMenu();
+                pauseMenu = new PauseMenu();
+                levelMenu = new LevelMenu();
+                gameOverMenu = new GameOverMenu();
+                highScoreMenu = new HighScoreMenu();
+                instructionsMenu = new InstructionsMenu();
+
+                main = new Main();
+
+                key = new KeyObject();
+                bossHealthBar = new HealthBar(renderer.width - 85, 10);
+
+                scoreText = new PIXI.Text("Score: 0", { font: "18px Gloria Hallelujah", fill: "#FFFFFF", align: "center", stroke: "#000000", strokeThickness: 4 });
+                scoreText.anchor.x = .5;
+                scoreText.x = renderer.width / 2;
+                scoreText.y = 10;
+                score = 0;
+
+                shrimpTimer = new Timer(createShrimp, 5000);
+                swordfishTimer = new Timer(createSwordfish, 7500);
+                jellyfishTimer = new Timer(createJellyfish, 10000);
+                turtleTimer = new Timer(createTurtle, 13000);
+                powerUpTimer = new Timer(createPowerUp, 12500);
+                bossTimer = new Timer(createBoss, 15000, 1);
+
+                stage.addChild(water);
+                stage.addChild(mainMenu);
+
+                gameOverTimer = new Timer(gameOver, 3000, 1);
+
+                animate();
+            }
+
+            function newGame() {
+                currentLevel = 1;
+                background = new Background(levels[currentLevel - 1]);
+                lives = 2;
+                score = 0;
+                scoreText.setText("Score: 0");
+                startGame();
+            }
+
+            function startGame() {
+                stageMusic.play();
+                isGameOver = false;
+
+                stage.addChild(main);
+
+                background.x = 0;
+                main.addChild(background);
+
+                createPlayer();
+                createHealthBar();
+
+                bossHealthBar.foreground.scale.x = 1;
+                stage.addChild(scoreText);
+                startTimers();
+            }
+
+            function createPlayer() {
+                for(var i = 0; i < numPlayers; i++) {
+                    var player = playerType(i);
+                    players.push(player);
+                    main.addChild(player);
+                }
+            }
+
+            function createHealthBar() {
+                for(var i = 0; i < players.length; i++) {
+                    var player = players[i];
+
+                    player.healthBar = new HealthBar(10 + i * 80, 10);
+                    player.healthBar.text.setText(player.life + " / " + player.maxLife);
+                    stage.addChild(player.healthBar);
+                }
+            }
+
+            function playerType(type) {
+                switch(type) {
+                    case 0:
+                        return new Player();
+                        break;
+
+                    case 1:
+                        return new Player2();
+                        break;
+                }
+            }
+
+            function enemyType(type) {
+                switch(type) {
+                    case 'shark':
+                        return new Shark();
+                        break;
+                    
+                    case "octopus":
+                        return new Octopus();
+                        break;
+                    
+                    case "seastar":
+                        return new Seastar();
+                        break;
+
+                    case "crab":
+                        return new Crab();
+                        break;
+
+                    case "turtle":
+                        return new Turtle();
+                        break;
+                }
+            }
+
+            function exitGame() {
+                resetGame();
+                stage.addChild(water);
+                stage.addChild(mainMenu);
+            }
+
+            function gameOver() {
+                if(players.length > 0) {
+                    levelMenu.title.setText('Level ' + currentLevel + ' completed!');
+
+                    if(currentLevel < levels.length) {
+                        currentLevel++;
+                        background.setTexture(levels[currentLevel - 1]);
+                    }
+                    else {
+                        isGameOver = true;
+                    }
+                }
+                else {
+                    lives--;
+                    levelMenu.title.setText('Level ' + currentLevel + ' failed!');
+                }
+
+                resetGame();
+                levelMenu.scoreText.setText('Score: ' + score);
+                levelMenu.lives.setText('Lives: ' + lives);
+                stage.addChild(levelMenu);
+            }
+
+            function resetGame() {
+                stageMusic.pause();
+                stageMusic.currentTime = 0;
+                stopTimers();
+                destroyAll();
+            }
+
+            function destroyAll() {
+                while(main.children.length > 0) {
+                    main.getChildAt(0).destroy();
+                }
+                
+                while(stage.children.length > 0) {
+                    if('destroy' in stage.getChildAt(0)) {
+                        stage.getChildAt(0).destroy();
+                    }
+                    else {
+                        stage.removeChildAt(0);
+                    }
+                }
+            }
+
+            function startTimers() {
+                shrimpTimer.start();
+                swordfishTimer.start();
+                jellyfishTimer.start();
+                turtleTimer.start();
+                powerUpTimer.start();
+                bossTimer.start();
+            }
+
+            function stopTimers() {
+                shrimpTimer.stop();
+                swordfishTimer.stop();
+                jellyfishTimer.stop();
+                turtleTimer.stop();
+                powerUpTimer.stop();
+                bossTimer.stop();
+            }
+
+            function updateScore(points) {
+                score += points;
+                if(score < 0) {
+                    score = 0;
+                }
+                scoreText.setText("Score: " + score);
+            }
+
+            function animate() {
+                for (var i = stage.children.length - 1; i >= 0; i--) {
+                    if (stage.children[i] != undefined && 'update' in stage.children[i]) {
+                        stage.children[i].update();
+                    }
+                }
+
+                for (var i = main.children.length - 1; i >= 0; i--) {
+                    if (main.children[i] != undefined && 'update' in main.children[i]) {
+                        main.children[i].update();
+                    }
+                }
+                
+                renderer.render(stage);
+                requestAnimFrame(animate);
+            }
+
+            function createSwordfish() {
+                var swordfish = new Swordfish();
+                enemies.push(swordfish);
+                main.addChild(swordfish);
+            }
+
+            function createShrimp() {
+                var shrimp = new Shrimp();
+                enemies.push(shrimp);
+                main.addChild(shrimp);
+            }
+
+            function createJellyfish() {
+                var jellyfish = new Jellyfish();
+                enemies.push(jellyfish);
+                main.addChild(jellyfish);
+            }
+
+            function createMussle() {
+                var mussle = new Mussle();
+                enemies.push(mussle);
+                main.addChild(mussle);
+            }
+
+            function createTurtle() {
+                var turtle = new Turtle();
+                enemies.push(turtle);
+                main.addChild(turtle);
+            }
+
+            function createBoss() {
+                var boss = enemyType(enemyList[currentLevel - 1]);
+                enemies.push(boss);
+                main.addChild(boss);
+                bossHealthBar.text.setText(boss.life + " / " + boss.maxLife);
+                stage.addChild(bossHealthBar);
+
+                if(boss instanceof Crab) {
+                    boss.createClaw();
+                }
+            }
+
+            function createPowerUp() {
+                var worm = new Worm();
+                worm.x = renderer.width;
+                worm.y = Math.random() * renderer.height;
+                main.addChild(worm);
+            }
+        </script>
+    </body>
+</html>
